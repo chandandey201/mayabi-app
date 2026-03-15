@@ -30,6 +30,97 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
+      - name: Fix root build.gradle
+        run: |
+          cat > build.gradle << 'EOF'
+          // Top-level build file
+          plugins {
+              id 'com.android.application' version '8.2.0' apply false
+              id 'com.android.library' version '8.2.0' apply false
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+          sed -i 's/^          //' build.gradle
+          echo "=== root build.gradle ==="
+          cat build.gradle
+
+      - name: Fix settings.gradle
+        run: |
+          cat > settings.gradle << 'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "Mayabi"
+          include ':app'
+          EOF
+          echo "=== settings.gradle ==="
+          cat settings.gradle
+
+      - name: Fix app/build.gradle
+        run: |
+          mkdir -p app
+          cat > app/build.gradle << 'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.mayabi.app'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.mayabi.app"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "0.1"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                      proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_1_8
+                  targetCompatibility JavaVersion.VERSION_1_8
+              }
+              buildFeatures {
+                  buildConfig true
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.11.0'
+              implementation 'androidx.webkit:webkit:1.8.0'
+          }
+          EOF
+          echo "=== app/build.gradle ==="
+          cat app/build.gradle
+
+      - name: Fix app folder structure
+        run: |
+          if [ ! -d "app/src" ] && [ -d "MayabiApp/app/src" ]; then
+            echo "Copying app/src from MayabiApp/"
+            cp -r MayabiApp/app/src app/src
+          fi
+          if [ ! -f "app/proguard-rules.pro" ]; then
+            echo "# ProGuard rules" > app/proguard-rules.pro
+          fi
+          echo "=== app structure ==="
+          find app -type f | sort
+
       - name: Setup Gradle wrapper
         run: |
           mkdir -p gradle/wrapper
@@ -37,30 +128,7 @@ jobs:
           curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
           printf '#!/bin/sh\nAPP_HOME="$(cd "$(dirname "$0")" && pwd)"\nCLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar\nexec java "-Dorg.gradle.appname=gradlew" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"\n' > gradlew
           chmod +x gradlew
-          echo "JAR size: $(wc -c < gradle/wrapper/gradle-wrapper.jar)"
-
-      - name: Fix project - move app folder to root
-        run: |
-          if [ ! -f "app/build.gradle" ] && [ -f "MayabiApp/app/build.gradle" ]; then
-            echo "Moving app from MayabiApp/ to root"
-            cp -r MayabiApp/app .
-          fi
-          if [ ! -f "settings.gradle" ] && [ -f "MayabiApp/settings.gradle" ]; then
-            cp MayabiApp/settings.gradle .
-          fi
-          if [ ! -f "build.gradle" ] && [ -f "MayabiApp/build.gradle" ]; then
-            cp MayabiApp/build.gradle .
-          fi
-          if [ ! -f "gradle.properties" ] && [ -f "MayabiApp/gradle.properties" ]; then
-            cp MayabiApp/gradle.properties .
-          fi
-
-      - name: Verify structure
-        run: |
-          echo "ROOT:" && ls -la
-          echo "APP:" && ls app/ || echo "NO APP FOLDER - BUILD WILL FAIL"
-          echo "SETTINGS:" && cat settings.gradle
-          echo "APP BUILD.GRADLE:" && cat app/build.gradle
+          echo "Jar: $(wc -c < gradle/wrapper/gradle-wrapper.jar) bytes"
 
       - name: Build APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
