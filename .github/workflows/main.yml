@@ -30,24 +30,68 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Fix root build.gradle
+      - name: Create app icon files
+        run: |
+          ICON="iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAACF0lEQVR4nO3TIQEAIBDAwO9PEDpiIAZiJ87PbPY6F6rmdwD8ZADSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApD22eEq505n4AQAAAABJRU5ErkJggg=="
+
+          for DIR in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            mkdir -p app/src/main/res/$DIR
+            echo "$ICON" | base64 -d > app/src/main/res/$DIR/ic_launcher.png
+            echo "$ICON" | base64 -d > app/src/main/res/$DIR/ic_launcher_round.png
+          done
+
+          echo "Icons created:"
+          find app/src/main/res -name "*.png" | sort
+
+      - name: Fix AndroidManifest
+        run: |
+          cat > app/src/main/AndroidManifest.xml << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.RECORD_AUDIO" />
+              <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+              <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+              <uses-permission android:name="android.permission.CAMERA" />
+              <uses-permission android:name="android.permission.VIBRATE" />
+              <application
+                  android:name=".MayabiApplication"
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:label="Mayabi"
+                  android:theme="@style/AppTheme"
+                  android:usesCleartextTraffic="true"
+                  android:hardwareAccelerated="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:launchMode="singleTask"
+                      android:screenOrientation="portrait"
+                      android:windowSoftInputMode="adjustResize"
+                      android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|screenSize|uiMode">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+          sed -i 's/^          //' app/src/main/AndroidManifest.xml
+          echo "Manifest fixed"
+
+      - name: Fix build.gradle files
         run: |
           cat > build.gradle << 'EOF'
-          // Top-level build file
           plugins {
               id 'com.android.application' version '8.2.0' apply false
-              id 'com.android.library' version '8.2.0' apply false
           }
           task clean(type: Delete) {
               delete rootProject.buildDir
           }
           EOF
-          sed -i 's/^          //' build.gradle
-          echo "=== root build.gradle ==="
-          cat build.gradle
 
-      - name: Fix settings.gradle
-        run: |
           cat > settings.gradle << 'EOF'
           pluginManagement {
               repositories {
@@ -66,12 +110,7 @@ jobs:
           rootProject.name = "Mayabi"
           include ':app'
           EOF
-          echo "=== settings.gradle ==="
-          cat settings.gradle
 
-      - name: Fix app/build.gradle
-        run: |
-          mkdir -p app
           cat > app/build.gradle << 'EOF'
           plugins {
               id 'com.android.application'
@@ -96,9 +135,6 @@ jobs:
                   sourceCompatibility JavaVersion.VERSION_1_8
                   targetCompatibility JavaVersion.VERSION_1_8
               }
-              buildFeatures {
-                  buildConfig true
-              }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -106,20 +142,8 @@ jobs:
               implementation 'androidx.webkit:webkit:1.8.0'
           }
           EOF
-          echo "=== app/build.gradle ==="
-          cat app/build.gradle
 
-      - name: Fix app folder structure
-        run: |
-          if [ ! -d "app/src" ] && [ -d "MayabiApp/app/src" ]; then
-            echo "Copying app/src from MayabiApp/"
-            cp -r MayabiApp/app/src app/src
-          fi
-          if [ ! -f "app/proguard-rules.pro" ]; then
-            echo "# ProGuard rules" > app/proguard-rules.pro
-          fi
-          echo "=== app structure ==="
-          find app -type f | sort
+          echo "All gradle files fixed"
 
       - name: Setup Gradle wrapper
         run: |
