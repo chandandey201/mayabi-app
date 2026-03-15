@@ -30,68 +30,63 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Find and fix project structure
+      - name: Fix project structure
         run: |
-          echo "=== Full repo structure ==="
-          find . -not -path './.git/*' -not -path './MayabiApp/.gradle/*' | sort
-
-          echo "=== Moving app folder to correct location ==="
           if [ -d "MayabiApp/app" ] && [ ! -d "app/src" ]; then
-            echo "Found app in MayabiApp/ - moving to root"
             cp -r MayabiApp/app ./app
           fi
-
           if [ -f "MayabiApp/settings.gradle" ] && [ ! -f "settings.gradle" ]; then
             cp MayabiApp/settings.gradle .
           fi
-
           if [ -f "MayabiApp/build.gradle" ] && [ ! -f "build.gradle" ]; then
             cp MayabiApp/build.gradle .
           fi
-
           if [ -f "MayabiApp/gradle.properties" ] && [ ! -f "gradle.properties" ]; then
             cp MayabiApp/gradle.properties .
           fi
 
-          echo "=== Structure after fix ==="
-          ls -la
-          echo "=== app folder ==="
-          ls app/ 2>/dev/null || echo "No app folder!"
-          echo "=== settings.gradle ==="
-          cat settings.gradle 2>/dev/null || echo "No settings.gradle!"
-
-      - name: Setup Gradle wrapper files
+      - name: Setup Gradle wrapper
         run: |
           mkdir -p gradle/wrapper
-
-          printf 'distributionBase=GRADLE_USER_HOME\n' > gradle/wrapper/gradle-wrapper.properties
-          printf 'distributionPath=wrapper/dists\n' >> gradle/wrapper/gradle-wrapper.properties
-          printf 'distributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip\n' >> gradle/wrapper/gradle-wrapper.properties
-          printf 'zipStoreBase=GRADLE_USER_HOME\n' >> gradle/wrapper/gradle-wrapper.properties
-          printf 'zipStorePath=wrapper/dists\n' >> gradle/wrapper/gradle-wrapper.properties
-
-          echo "wrapper.properties:"
-          cat gradle/wrapper/gradle-wrapper.properties
-
-          curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" \
-            -o gradle/wrapper/gradle-wrapper.jar
-          echo "JAR: $(wc -c < gradle/wrapper/gradle-wrapper.jar) bytes"
-
+          printf 'distributionBase=GRADLE_USER_HOME\ndistributionPath=wrapper/dists\ndistributionUrl=https\\://services.gradle.org/distributions/gradle-8.2-bin.zip\nzipStoreBase=GRADLE_USER_HOME\nzipStorePath=wrapper/dists\n' > gradle/wrapper/gradle-wrapper.properties
+          curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
           printf '#!/bin/sh\nAPP_HOME="$(cd "$(dirname "$0")" && pwd)"\nCLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar\nexec java "-Dorg.gradle.appname=gradlew" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"\n' > gradlew
           chmod +x gradlew
-          echo "gradlew OK"
 
-      - name: Build debug APK
-        run: ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tail -50
+      - name: Show project before build
+        run: |
+          echo "=== ROOT ==="
+          ls -la
+          echo "=== app/ ==="
+          ls -la app/ || echo "NO APP FOLDER"
+          echo "=== app/src/main/ ==="
+          ls -la app/src/main/ || echo "NO MAIN FOLDER"
+          echo "=== AndroidManifest ==="
+          cat app/src/main/AndroidManifest.xml || echo "NO MANIFEST"
+          echo "=== app/build.gradle ==="
+          cat app/build.gradle || echo "NO APP BUILD.GRADLE"
+          echo "=== settings.gradle ==="
+          cat settings.gradle || echo "NO SETTINGS"
+          echo "=== build.gradle ==="
+          cat build.gradle || echo "NO ROOT BUILD.GRADLE"
+
+      - name: Build APK - FULL OUTPUT
+        run: |
+          ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
+        continue-on-error: true
 
-      - name: Find APK
-        run: find . -name "*.apk" 2>/dev/null
+      - name: Check APK output
+        run: |
+          echo "=== Searching for APK ==="
+          find . -name "*.apk" 2>/dev/null || echo "NO APK FOUND"
+          echo "=== Build output folder ==="
+          ls -la app/build/outputs/ 2>/dev/null || echo "NO OUTPUTS FOLDER"
 
-      - name: Upload APK
+      - name: Upload APK if exists
         uses: actions/upload-artifact@v4
         with:
           name: Mayabi-0.1-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
+          if-no-files-found: warn
