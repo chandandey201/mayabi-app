@@ -1,0 +1,163 @@
+╔══════════════════════════════════════════════════════════════╗
+║           MAYABI 0.1 — ANDROID STUDIO BUILD GUIDE           ║
+║                  Step-by-Step Instructions                   ║
+╚══════════════════════════════════════════════════════════════╝
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ STEP 1 — INSTALL ANDROID STUDIO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Go to: https://developer.android.com/studio
+2. Download Android Studio (latest version)
+3. Install it (Next → Next → Install → Finish)
+4. On first launch, it will download Android SDK automatically
+   → Accept license → Wait for download (takes 10-15 min)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ STEP 2 — OPEN THE PROJECT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+1. Extract the MayabiApp ZIP folder
+2. Open Android Studio
+3. Click "Open" (not "New Project")
+4. Navigate to the extracted MayabiApp folder
+5. Click OK / Open
+6. Wait for Gradle sync (bottom progress bar)
+   → This takes 2-5 minutes first time
+   → If it asks to upgrade Gradle, click "OK"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ STEP 3 — GENERATE SIGNING KEYSTORE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+You need a keystore to sign your APK:
+
+In Android Studio menu:
+  Build → Generate Signed Bundle / APK
+
+1. Select "APK" → Next
+2. Click "Create new..." keystore
+3. Fill in:
+   - Key store path: [choose app/ folder] → mayabi-release.keystore
+   - Password: mayabi2024
+   - Key alias: mayabi
+   - Key password: mayabi2024
+   - First and Last Name: Your Name
+   - Country Code: BD (for Bangladesh)
+4. Click OK → Next → Release → Finish
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ STEP 4A — BUILD DEBUG APK (for testing)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+In Android Studio:
+  Build → Build Bundle(s) / APK(s) → Build APK(s)
+
+Wait for build (1-3 minutes)
+Click "locate" in the popup notification
+
+APK location:
+  app/build/outputs/apk/debug/app-debug.apk
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ STEP 4B — BUILD RELEASE APK (to share)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+  Build → Generate Signed Bundle / APK
+  → APK → Next
+  → Select your keystore → Next
+  → Release → Finish
+
+APK location:
+  app/build/outputs/apk/release/app-release.apk
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ STEP 5 — INSTALL ON YOUR ANDROID PHONE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+METHOD A — USB (fastest):
+  1. Phone Settings → About Phone → tap "Build Number" 7 times
+  2. Developer Options → Enable "USB Debugging"
+  3. Connect phone to PC with USB cable
+  4. In Android Studio: Run → Run 'app'
+  5. Select your phone → OK
+
+METHOD B — File Transfer:
+  1. Copy the APK file to your phone (USB / WhatsApp / email)
+  2. Open Files app on phone
+  3. Tap the APK file
+  4. Allow "Install from unknown sources" if asked
+  5. Install → Done!
+
+METHOD C — ADB command:
+  Open terminal in Android Studio (View → Terminal):
+  adb install app/build/outputs/apk/debug/app-debug.apk
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ TROUBLESHOOTING
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+❌ "Gradle sync failed"
+   → File → Invalidate Caches → Invalidate and Restart
+   → Try again after restart
+
+❌ "SDK not installed"
+   → Tools → SDK Manager → Install Android 14 (API 34)
+
+❌ "Minimum SDK" error
+   → Open app/build.gradle → change minSdk to 21
+
+❌ "Keystore not found"
+   → Make sure keystore file is in app/ folder
+   → Or use debug build (Step 4A) which doesn't need keystore
+
+❌ Build still fails
+   → In Android Studio terminal run:
+   → ./gradlew clean
+   → ./gradlew assembleDebug
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ PROJECT FILE STRUCTURE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+MayabiApp/
+├── app/
+│   ├── src/main/
+│   │   ├── assets/
+│   │   │   └── mayabi.html          ← THE ENTIRE APP UI
+│   │   ├── java/com/mayabi/app/
+│   │   │   ├── MainActivity.java    ← WebView host
+│   │   │   └── MayabiApplication.java
+│   │   ├── res/
+│   │   │   ├── layout/activity_main.xml
+│   │   │   └── values/ (strings, colors, styles)
+│   │   └── AndroidManifest.xml
+│   └── build.gradle
+├── build.gradle
+├── settings.gradle
+└── gradle.properties
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ MAYABI 0.1 FEATURES IN YOUR APK
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ Full AI chat (Claude intelligence)
+✅ Real-time web search
+✅ 🎬 Video Making Studio (8 templates)
+✅ 📱 App Development Studio (8 templates)
+✅ ⚡ Quick prompt shortcuts
+✅ 🎤 Voice input (speak to Mayabi)
+✅ 🔊 Text-to-speech (Mayabi speaks back)
+✅ 🌐 Live translation (12 languages)
+✅ 📌 Pin important messages (long-press)
+✅ 🔍 Search chat history
+✅ 💾 Auto-save on device
+✅ 📤 Export chat to file
+✅ 🎨 6 color themes
+✅ 👤 Personal profile
+✅ 🔐 Completely private
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Built with ❤️ — Mayabi 0.1, First Official Release
+Your private AI, yours forever.

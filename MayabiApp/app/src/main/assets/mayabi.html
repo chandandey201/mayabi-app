@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+<title>Mayabi 0.1</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=JetBrains+Mono:wght@300;400&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+  :root{
+    --bg:#03010c;--card:rgba(139,92,246,0.08);--a1:#a78bfa;--a2:#60d8fa;
+    --tx:#ede9fe;--sub:rgba(167,139,250,0.45);--br:rgba(139,92,246,0.18);
+    --ubg:linear-gradient(135deg,rgba(88,28,220,0.4),rgba(6,120,180,0.3));
+    --ibg:rgba(255,255,255,0.03);
+  }
+  body{background:var(--bg);color:var(--tx);font-family:'Playfair Display',serif;min-height:100vh;overflow:hidden;display:flex;flex-direction:column;max-width:480px;margin:0 auto;position:relative}
+  ::-webkit-scrollbar{width:2px}::-webkit-scrollbar-thumb{background:var(--a1);opacity:.3;border-radius:2px}
+
+  /* HEADER */
+  .hdr{padding:10px 14px 4px;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--br);flex-shrink:0}
+  .hdr-left,.hdr-right{display:flex;gap:5px;min-width:70px}
+  .hdr-right{justify-content:flex-end}
+  .hbtn{background:transparent;border:1px solid var(--br);border-radius:14px;padding:4px 9px;color:var(--sub);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s}
+  .hbtn:active{opacity:.7}
+
+  /* AVATAR */
+  .av-wrap{text-align:center;padding:8px 16px 0;flex-shrink:0}
+  .av-ring{position:relative;display:inline-block;margin-bottom:8px}
+  .av-ring::before,.av-ring::after{content:'';position:absolute;border-radius:50%;border:1.5px solid var(--a1);opacity:0;animation:ring 2.2s ease-out infinite}
+  .av-ring::before{inset:-16px}
+  .av-ring::after{inset:-8px;animation-delay:.8s;border-color:var(--a2);opacity:0}
+  .av-core{width:68px;height:68px;border-radius:50%;background:radial-gradient(circle at 30% 30%,rgba(167,139,250,.5),rgba(96,216,250,.25),rgba(0,0,0,.7));border:2.5px solid var(--a1);display:flex;align-items:center;justify-content:center;font-size:26px;box-shadow:0 0 30px rgba(167,139,250,.4),0 0 80px rgba(167,139,250,.1);animation:idle 3s ease-in-out infinite;transition:all .4s;cursor:pointer}
+  .av-core.thinking{animation:think 1.2s ease-in-out infinite;box-shadow:0 0 30px rgba(251,191,36,.5)}
+  .av-core.speaking{animation:speak .5s ease-in-out infinite;box-shadow:0 0 30px rgba(52,211,153,.5)}
+  .brand-row{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:2px}
+  .brand{font-size:20px;font-weight:700;letter-spacing:.2em;text-shadow:0 0 30px rgba(167,139,250,.6)}
+  .vbadge{font-size:8px;font-family:'JetBrains Mono',monospace;color:var(--a1);border:1px solid rgba(167,139,250,.5);border-radius:6px;padding:2px 6px;letter-spacing:.08em}
+  .av-sub{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--sub);letter-spacing:.18em;margin-bottom:6px}
+  .pills{display:flex;gap:4px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+  .pill{font-size:10px;padding:2px 7px;border-radius:12px;background:var(--card);border:1px solid var(--br);color:var(--sub);font-family:'JetBrains Mono',monospace}
+
+  /* TABS */
+  .tabs{display:flex;border-bottom:1px solid var(--br);flex-shrink:0}
+  .tab{flex:1;background:transparent;border:none;border-bottom:2.5px solid transparent;padding:8px 2px;color:var(--sub);cursor:pointer;font-size:12px;font-family:'JetBrains Mono',monospace;transition:all .2s}
+  .tab.active{color:var(--a1);border-bottom-color:var(--a1)}
+
+  /* CONTENT */
+  .content{flex:1;overflow-y:auto;display:none;flex-direction:column}
+  .content.active{display:flex}
+
+  /* CHAT */
+  #chatMessages{flex:1;padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+  .msg-row{display:flex;align-items:flex-end;gap:7px}
+  .msg-row.user{flex-direction:row-reverse}
+  .msg-av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,rgba(167,139,250,.5),rgba(96,216,250,.3));border:1px solid rgba(167,139,250,.4);display:flex;align-items:center;justify-content:center;font-size:11px;flex-shrink:0}
+  .bubble{max-width:82%;padding:11px 14px;border-radius:16px;border:1px solid var(--br);font-size:14px;line-height:1.75;backdrop-filter:blur(12px);animation:fadeUp .3s ease both}
+  .bubble.ai{background:var(--card);border-radius:16px 16px 16px 4px}
+  .bubble.user{background:var(--ubg);border:1px solid rgba(167,139,250,.4);border-radius:16px 16px 4px 16px}
+  .bubble h1{font-size:16px;font-weight:700;color:var(--a1);margin:4px 0 6px;border-bottom:1px solid var(--br);padding-bottom:4px}
+  .bubble h2{font-size:14px;font-weight:700;color:var(--a2);margin:10px 0 4px}
+  .bubble h3{font-size:13px;font-weight:700;color:var(--a1);margin:8px 0 3px}
+  .bubble strong{font-weight:700;color:var(--tx)}
+  .bubble em{color:var(--a1)}
+  .bubble code{background:rgba(167,139,250,.18);color:var(--a1);padding:1px 5px;border-radius:4px;font-family:'JetBrains Mono',monospace;font-size:12px}
+  .bubble pre{background:rgba(0,0,0,.5);border:1px solid var(--br);border-radius:8px;padding:10px 12px;margin:6px 0;overflow-x:auto;position:relative}
+  .bubble pre code{background:none;padding:0;color:var(--a1);font-size:12px;line-height:1.6}
+  .copy-pre{position:absolute;top:5px;right:8px;background:transparent;border:none;color:var(--sub);font-size:10px;cursor:pointer;font-family:'JetBrains Mono',monospace}
+  .bubble ul,.bubble ol{padding-left:4px;margin:4px 0}
+  .bubble li{display:flex;gap:7px;margin-bottom:3px;line-height:1.7}
+  .bullet-dot{color:var(--a1);font-size:8px;margin-top:5px;flex-shrink:0}
+  .bubble hr{border:none;border-top:1px solid var(--br);margin:8px 0}
+  .typing-dots{display:flex;gap:5px;align-items:center;padding:4px 0}
+  .dot{width:7px;height:7px;border-radius:50%;background:linear-gradient(135deg,var(--a1),var(--a2));animation:bounce 1.2s ease-in-out infinite}
+  .dot:nth-child(2){animation-delay:.2s}
+  .dot:nth-child(3){animation-delay:.4s}
+
+  /* QUICK PROMPTS */
+  .quick-bar{display:flex;gap:6px;padding:6px 12px;overflow-x:auto;flex-shrink:0}
+  .quick-bar::-webkit-scrollbar{display:none}
+  .qbtn{background:var(--card);border:1px solid var(--br);border-radius:14px;padding:4px 10px;color:var(--sub);font-size:11px;cursor:pointer;white-space:nowrap;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+  .qbtn:active{background:rgba(167,139,250,.15)}
+
+  /* TRANSLATE BAR */
+  .tl-bar{display:flex;gap:6px;align-items:center;padding:4px 12px;flex-shrink:0}
+  .tl-btn{background:var(--card);border:1px solid var(--br);border-radius:13px;padding:3px 9px;color:var(--sub);font-size:11px;cursor:pointer;font-family:'JetBrains Mono',monospace;transition:all .2s}
+  .tl-btn.active{background:rgba(167,139,250,.2);color:var(--a1);border-color:var(--a1)}
+  .tl-select{background:rgba(0,0,0,.4);border:1px solid var(--br);border-radius:9px;padding:3px 7px;color:var(--tx);font-size:11px;font-family:'JetBrains Mono',monospace;flex:1}
+
+  /* INPUT */
+  .input-area{padding:8px 12px 16px;flex-shrink:0}
+  .input-bar{display:flex;gap:6px;align-items:flex-end;background:var(--ibg);border-radius:22px;border:1px solid var(--br);padding:8px 10px;backdrop-filter:blur(24px)}
+  .ibtn{width:33px;height:33px;border-radius:50%;border:none;cursor:pointer;background:rgba(167,139,250,.1);color:var(--sub);font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+  .ibtn:active{transform:scale(.92)}
+  .ibtn.on{background:rgba(167,139,250,.25);color:var(--a1)}
+  .ibtn.rec{background:linear-gradient(135deg,#ef4444,#f97316);box-shadow:0 0 16px rgba(239,68,68,.5)}
+  #inputBox{flex:1;background:transparent;border:none;color:var(--tx);font-size:14px;font-family:'Playfair Display',serif;resize:none;line-height:1.65;max-height:110px;overflow-y:auto;caret-color:var(--a1)}
+  #inputBox:focus{outline:none}
+  #inputBox::placeholder{color:var(--sub)}
+  .send-btn{width:34px;height:34px;border-radius:50%;border:none;cursor:pointer;background:rgba(167,139,250,.1);color:white;font-size:14px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .3s}
+  .send-btn.ready{background:linear-gradient(135deg,var(--a1),var(--a2));box-shadow:0 0 18px rgba(167,139,250,.5)}
+  .send-btn:active{transform:scale(.92)}
+  .footer-txt{text-align:center;color:var(--sub);font-size:9px;font-family:'JetBrains Mono',monospace;letter-spacing:.1em;margin-top:5px}
+
+  /* STUDIO TABS */
+  .studio-scroll{padding:12px;display:flex;flex-direction:column;gap:10px;overflow-y:auto}
+  .studio-header{padding:14px;border-radius:14px;border:1px solid rgba(167,139,250,.35);background:rgba(167,139,250,.06)}
+  .studio-title{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--a1);letter-spacing:.14em;margin-bottom:4px}
+  .studio-sub{font-size:13px;color:var(--sub);line-height:1.6}
+  .tpl-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tpl-btn{background:var(--card);border:1px solid var(--br);border-radius:13px;padding:13px 12px;cursor:pointer;text-align:left;transition:all .2s;display:flex;flex-direction:column;gap:5px}
+  .tpl-btn:active{transform:scale(.97);background:rgba(167,139,250,.12)}
+  .tpl-icon{font-size:22px}
+  .tpl-name{font-size:13px;font-weight:600;color:var(--tx);line-height:1.3}
+  .tpl-hint{font-size:10px;color:var(--sub);font-family:'JetBrains Mono',monospace}
+  .custom-area{padding:12px 14px;border-radius:12px;background:var(--card);border:1px solid var(--br)}
+  .custom-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--a1);letter-spacing:.1em;margin-bottom:7px}
+  .custom-input{width:100%;background:transparent;border:1px solid var(--br);border-radius:9px;padding:9px 11px;color:var(--tx);font-size:13px;font-family:'Playfair Display',serif;resize:none;line-height:1.6;margin-bottom:9px}
+  .custom-input:focus{outline:none;border-color:var(--a1)}
+  .custom-btn{background:linear-gradient(135deg,var(--a1),var(--a2));border:none;border-radius:10px;padding:9px 18px;color:white;cursor:pointer;font-size:12px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em;transition:all .2s}
+  .custom-btn:active{transform:scale(.97);opacity:.9}
+  .custom-btn:disabled{opacity:.4;cursor:default}
+
+  /* SETTINGS */
+  .settings-scroll{padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto}
+  .s-card{padding:14px;border-radius:14px;background:var(--card);border:1px solid var(--br)}
+  .s-title{font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--a1);letter-spacing:.14em;margin-bottom:10px}
+  .s-input{width:100%;background:transparent;border:1px solid var(--br);border-radius:10px;padding:8px 12px;color:var(--tx);font-size:14px;font-family:'Playfair Display',serif;margin-bottom:9px}
+  .s-input:focus{outline:none;border-color:var(--a1)}
+  .s-btn{background:linear-gradient(135deg,var(--a1),var(--a2));border:none;border-radius:10px;padding:8px 18px;color:white;cursor:pointer;font-size:12px;font-family:'JetBrains Mono',monospace;letter-spacing:.06em}
+  .theme-grid{display:flex;gap:7px;flex-wrap:wrap}
+  .th-btn{background:transparent;border:1px solid var(--br);border-radius:14px;padding:5px 11px;color:var(--tx);cursor:pointer;font-size:11px;font-family:'JetBrains Mono',monospace;transition:all .2s}
+  .th-btn.active{border-color:var(--a1);background:rgba(167,139,250,.18);color:var(--a1)}
+  .privacy-item{font-size:13px;color:var(--sub);line-height:1.9}
+  .stat-item{font-size:13px;color:var(--sub);line-height:1.9}
+  .stat-item span{color:var(--tx)}
+  .danger-btn{background:transparent;border:1px solid #ef4444;border-radius:12px;padding:11px;width:100%;color:#ef4444;cursor:pointer;font-size:13px}
+
+  /* TOAST */
+  .toast{position:fixed;top:14px;left:50%;transform:translateX(-50%) translateY(-10px);background:rgba(0,0,0,.92);border:1px solid rgba(167,139,250,.5);color:var(--tx);padding:8px 20px;border-radius:22px;font-size:12px;font-family:'JetBrains Mono',monospace;z-index:1000;opacity:0;transition:all .3s;pointer-events:none;white-space:nowrap;backdrop-filter:blur(20px)}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  /* PINS */
+  .pins-scroll{padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+  .pin-card{padding:12px 14px;border-radius:13px;background:var(--card);border:1px solid rgba(167,139,250,.3)}
+  .pin-label{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--a1);margin-bottom:5px;letter-spacing:.1em}
+  .pin-text{font-size:13px;color:var(--tx);line-height:1.65;margin-bottom:8px}
+  .pin-actions{display:flex;gap:6px}
+  .pin-use{background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);border-radius:9px;padding:3px 9px;color:var(--a1);cursor:pointer;font-size:11px;font-family:'JetBrains Mono',monospace}
+  .pin-del{background:transparent;border:1px solid var(--br);border-radius:9px;padding:3px 9px;color:var(--sub);cursor:pointer;font-size:11px;font-family:'JetBrains Mono',monospace}
+  .empty-state{text-align:center;color:var(--sub);padding:44px 20px;font-size:14px;line-height:1.8}
+
+  /* SEARCH */
+  .search-area{padding:12px;display:flex;flex-direction:column;gap:8px;overflow-y:auto}
+  .search-input{width:100%;background:var(--card);border:1px solid var(--br);border-radius:13px;padding:10px 14px;color:var(--tx);font-size:14px;font-family:'Playfair Display',serif}
+  .search-input:focus{outline:none;border-color:var(--a1)}
+  .result-card{padding:11px 13px;border-radius:12px;background:var(--card);border:1px solid var(--br)}
+  .result-role{font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--a1);margin-bottom:4px;letter-spacing:.1em}
+  .result-text{font-size:13px;color:var(--tx);line-height:1.65}
+
+  /* ANIMATIONS */
+  @keyframes ring{0%{transform:scale(1);opacity:.5}100%{transform:scale(1.55);opacity:0}}
+  @keyframes idle{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
+  @keyframes think{0%,100%{transform:rotate(0)}30%{transform:rotate(-7deg)}70%{transform:rotate(7deg)}}
+  @keyframes speak{0%,100%{transform:scale(1)}30%{transform:scale(1.1)}70%{transform:scale(.95)}}
+  @keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-7px)}}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes orb{0%,100%{transform:translate(0,0)}50%{transform:translate(18px,-14px)}}
+
+  /* AMBIENT */
+  .orb1{position:fixed;top:5%;left:-8%;width:340px;height:340px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.12) 0%,transparent 70%);animation:orb 15s ease-in-out infinite;pointer-events:none;z-index:0}
+  .orb2{position:fixed;bottom:8%;right:-8%;width:280px;height:280px;border-radius:50%;background:radial-gradient(circle,rgba(96,216,250,.09) 0%,transparent 70%);animation:orb 20s ease-in-out 8s infinite;pointer-events:none;z-index:0}
+</style>
+</head>
+<body>
+
+<div class="orb1"></div>
+<div class="orb2"></div>
+<div class="toast" id="toast"></div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-left">
+    <button class="hbtn" onclick="toggleThemePicker()">🎨</button>
+    <button class="hbtn" onclick="exportChat()">📤</button>
+    <button class="hbtn" onclick="clearChat()">🗑</button>
+  </div>
+  <div class="av-wrap" style="padding:0;flex:1;text-align:center">
+    <div class="av-ring">
+      <div class="av-core" id="avCore" onclick="toggleMute()">🌸</div>
+    </div>
+    <div class="brand-row">
+      <span class="brand">MAYABI</span>
+      <span class="vbadge">v0.1</span>
+    </div>
+    <div class="av-sub" id="avSub">✦ FIRST OFFICIAL RELEASE</div>
+    <div class="pills">
+      <span class="pill">🎬 Video</span><span class="pill">📱 Apps</span>
+      <span class="pill">💻 Code</span><span class="pill">📈 Trade</span>
+      <span class="pill">🔐 Sec</span><span class="pill">💰 Earn</span>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <button class="hbtn" id="msgCount">0 💬</button>
+  </div>
+</div>
+
+<!-- THEME PICKER -->
+<div id="themePicker" style="display:none;padding:10px 14px;border-bottom:1px solid var(--br);background:rgba(0,0,0,.5);backdrop-filter:blur(20px)">
+  <div style="font-size:9px;font-family:'JetBrains Mono',monospace;color:var(--sub);letter-spacing:.14em;margin-bottom:7px">SELECT THEME</div>
+  <div class="theme-grid">
+    <button class="th-btn active" onclick="setTheme('cosmic','#a78bfa','#60d8fa','#03010c')">🌌 Cosmic</button>
+    <button class="th-btn" onclick="setTheme('rose','#f472b6','#c084fc','#0d0008')">🌸 Rose</button>
+    <button class="th-btn" onclick="setTheme('aurora','#34d399','#22d3ee','#010f06')">🌿 Aurora</button>
+    <button class="th-btn" onclick="setTheme('ember','#f97316','#ef4444','#0d0200')">🔥 Ember</button>
+    <button class="th-btn" onclick="setTheme('neon','#00f076','#00d4ff','#00040e')">⚡ Neon</button>
+    <button class="th-btn" onclick="setTheme('sakura','#fbbf24','#fb923c','#0a0508')">🎋 Sakura</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('chat',this)">💬 Chat</button>
+  <button class="tab" onclick="switchTab('video',this)">🎬 Video</button>
+  <button class="tab" onclick="switchTab('apps',this)">📱 Apps</button>
+  <button class="tab" onclick="switchTab('pins',this)" id="pinsTab">📌</button>
+  <button class="tab" onclick="switchTab('find',this)">🔍</button>
+  <button class="tab" onclick="switchTab('settings',this)">⚙️</button>
+</div>
+
+<!-- CHAT TAB -->
+<div class="content active" id="tab-chat" style="flex-direction:column">
+  <div id="chatMessages"></div>
+
+  <div class="tl-bar">
+    <button class="tl-btn" id="tlBtn" onclick="toggleTranslate()">🌐 Translate</button>
+    <select id="tlLang" class="tl-select" style="display:none">
+      <option>English</option><option>Bengali</option><option>Hindi</option>
+      <option>Arabic</option><option>Spanish</option><option>French</option>
+      <option>German</option><option>Japanese</option><option>Chinese</option>
+      <option>Russian</option><option>Turkish</option><option>Portuguese</option>
+    </select>
+  </div>
+
+  <div class="quick-bar" id="quickBar" style="display:none">
+    <button class="qbtn" onclick="useQuick('Write a complete YouTube video script about: ')">🎬 Video</button>
+    <button class="qbtn" onclick="useQuick('Build a complete app for: ')">📱 App</button>
+    <button class="qbtn" onclick="useQuick('Write production code for: ')">💻 Code</button>
+    <button class="qbtn" onclick="useQuick('Trading strategy for: ')">📈 Trade</button>
+    <button class="qbtn" onclick="useQuick('Money-making ideas for: ')">💰 Earn</button>
+    <button class="qbtn" onclick="useQuick('Explain in depth: ')">🧠 Explain</button>
+    <button class="qbtn" onclick="useQuick('Security audit for: ')">🔐 Secure</button>
+    <button class="qbtn" onclick="useQuick('Research and analyze: ')">🔍 Research</button>
+  </div>
+
+  <div class="input-area">
+    <div class="input-bar">
+      <button class="ibtn" id="quickToggleBtn" onclick="toggleQuick()" title="Quick prompts">⚡</button>
+      <button class="ibtn" id="voiceBtn" onclick="toggleVoice()" title="Voice input">🎤</button>
+      <textarea id="inputBox" rows="1" placeholder="Ask Mayabi 0.1 anything..." oninput="autoResize(this);updateSend()" onkeydown="handleKey(event)"></textarea>
+      <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+    </div>
+    <div class="footer-txt">MAYABI 0.1 · 🎬 VIDEO · 📱 APPS · 🌐 WEB · 🔐 PRIVATE</div>
+  </div>
+</div>
+
+<!-- VIDEO TAB -->
+<div class="content" id="tab-video">
+  <div class="studio-scroll">
+    <div class="studio-header">
+      <div class="studio-title">🎬 VIDEO MAKING STUDIO</div>
+      <div class="studio-sub">Complete scripts, storyboards & strategies for YouTube, TikTok, Reels, Docs and more.</div>
+    </div>
+    <div class="tpl-grid">
+      <button class="tpl-btn" onclick="useTemplate('Write a complete YouTube tutorial video script with hook, intro, step-by-step content, and strong CTA for: ')"><span class="tpl-icon">🎯</span><span class="tpl-name">YouTube Tutorial</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Write a 60-second viral TikTok script with hook in the first 3 seconds for: ')"><span class="tpl-icon">🔥</span><span class="tpl-name">TikTok Viral</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Write a cinematic short film script with scene descriptions, dialogue, and B-roll notes about: ')"><span class="tpl-icon">🎬</span><span class="tpl-name">Cinematic Short</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Write a documentary-style video script with narration and visual directions about: ')"><span class="tpl-icon">📖</span><span class="tpl-name">Documentary</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Write a professional product demo video script showcasing features for: ')"><span class="tpl-icon">💼</span><span class="tpl-name">Product Demo</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Create a 30-day YouTube content calendar with titles and hooks for a channel about: ')"><span class="tpl-icon">📅</span><span class="tpl-name">Content Calendar</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Write a full podcast episode script with intro, talking points, and outro for: ')"><span class="tpl-icon">🎙️</span><span class="tpl-name">Podcast Script</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Write a 30-second viral Instagram Reel script about: ')"><span class="tpl-icon">📸</span><span class="tpl-name">Instagram Reel</span><span class="tpl-hint">Tap to use →</span></button>
+    </div>
+    <div class="custom-area">
+      <div class="custom-label">CUSTOM VIDEO REQUEST</div>
+      <textarea class="custom-input" id="videoInput" rows="3" placeholder="Describe your video idea..."></textarea>
+      <button class="custom-btn" id="videoBtn" onclick="sendCustom('video')">🎬 Create Script</button>
+    </div>
+  </div>
+</div>
+
+<!-- APPS TAB -->
+<div class="content" id="tab-apps">
+  <div class="studio-scroll">
+    <div class="studio-header" style="border-color:rgba(96,216,250,.35);background:rgba(96,216,250,.05)">
+      <div class="studio-title" style="color:var(--a2)">📱 APP DEVELOPMENT STUDIO</div>
+      <div class="studio-sub">Build complete web & mobile apps with full production code.</div>
+    </div>
+    <div class="tpl-grid">
+      <button class="tpl-btn" onclick="useTemplate('Build a complete React SaaS dashboard with auth, sidebar, and data tables for: ')"><span class="tpl-icon">⚛️</span><span class="tpl-name">React SaaS</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete React Native mobile app with navigation and screens for: ')"><span class="tpl-icon">📱</span><span class="tpl-name">React Native</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete Next.js full-stack app with API routes, Prisma, and auth for: ')"><span class="tpl-icon">🌐</span><span class="tpl-name">Next.js App</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete AI-powered web app using the Claude API for: ')"><span class="tpl-icon">🤖</span><span class="tpl-name">AI App</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete e-commerce store with cart and checkout for: ')"><span class="tpl-icon">🛒</span><span class="tpl-name">E-commerce</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete analytics dashboard with charts and real-time KPIs for: ')"><span class="tpl-icon">📊</span><span class="tpl-name">Dashboard</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete real-time chat app with rooms and user presence for: ')"><span class="tpl-icon">💬</span><span class="tpl-name">Chat App</span><span class="tpl-hint">Tap to use →</span></button>
+      <button class="tpl-btn" onclick="useTemplate('Build a complete authentication system with JWT and OAuth for: ')"><span class="tpl-icon">🔐</span><span class="tpl-name">Auth System</span><span class="tpl-hint">Tap to use →</span></button>
+    </div>
+    <div class="custom-area">
+      <div class="custom-label" style="color:var(--a2)">CUSTOM APP REQUEST</div>
+      <textarea class="custom-input" id="appInput" rows="3" placeholder="Describe your app idea..."></textarea>
+      <button class="custom-btn" id="appBtn" style="background:linear-gradient(135deg,var(--a2),var(--a1))" onclick="sendCustom('app')">📱 Build App</button>
+    </div>
+  </div>
+</div>
+
+<!-- PINS TAB -->
+<div class="content" id="tab-pins">
+  <div class="pins-scroll" id="pinsList">
+    <div class="empty-state">No pinned messages yet.<br/><span style="font-size:12px;font-family:'JetBrains Mono',monospace">Long-press any message → Pin</span></div>
+  </div>
+</div>
+
+<!-- SEARCH TAB -->
+<div class="content" id="tab-find">
+  <div class="search-area">
+    <input type="text" class="search-input" id="searchInput" placeholder="Search your conversation..." oninput="searchChat(this.value)"/>
+    <div id="searchResults"></div>
+  </div>
+</div>
+
+<!-- SETTINGS TAB -->
+<div class="content" id="tab-settings">
+  <div class="settings-scroll">
+    <div class="s-card">
+      <div class="s-title">👤 YOUR PROFILE</div>
+      <input type="text" class="s-input" id="nameInput" placeholder="Your name..."/>
+      <button class="s-btn" onclick="saveName()">Save Profile</button>
+    </div>
+    <div class="s-card">
+      <div class="s-title">🎨 THEMES</div>
+      <div class="theme-grid" id="settingsThemeGrid">
+        <button class="th-btn active" onclick="setTheme('cosmic','#a78bfa','#60d8fa','#03010c')">🌌 Cosmic</button>
+        <button class="th-btn" onclick="setTheme('rose','#f472b6','#c084fc','#0d0008')">🌸 Rose</button>
+        <button class="th-btn" onclick="setTheme('aurora','#34d399','#22d3ee','#010f06')">🌿 Aurora</button>
+        <button class="th-btn" onclick="setTheme('ember','#f97316','#ef4444','#0d0200')">🔥 Ember</button>
+        <button class="th-btn" onclick="setTheme('neon','#00f076','#00d4ff','#00040e')">⚡ Neon</button>
+        <button class="th-btn" onclick="setTheme('sakura','#fbbf24','#fb923c','#0a0508')">🎋 Sakura</button>
+      </div>
+    </div>
+    <div class="s-card">
+      <div class="s-title">🔐 PRIVACY & SECURITY</div>
+      <div class="privacy-item">✅ Stored <strong>only on your device</strong></div>
+      <div class="privacy-item">✅ No third-party data sharing</div>
+      <div class="privacy-item">✅ Built exclusively for you</div>
+      <div class="privacy-item">✅ Web search is private</div>
+      <div class="privacy-item">✅ Clear all data anytime</div>
+    </div>
+    <div class="s-card">
+      <div class="s-title">📊 MAYABI 0.1 STATS</div>
+      <div class="stat-item">🌸 Version: <span style="color:var(--a1)">0.1 — First Release</span></div>
+      <div class="stat-item">💬 Messages: <span id="statMsgs">0</span></div>
+      <div class="stat-item">📌 Pinned: <span id="statPins">0</span></div>
+      <div class="stat-item">👤 Owner: <span id="statName">Not set</span></div>
+      <div class="stat-item">🎨 Theme: <span id="statTheme">🌌 Cosmic</span></div>
+    </div>
+    <button class="danger-btn" onclick="clearChat()">🗑 Clear All Chat Data</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════
+let messages = [];
+let pins = [];
+let userName = '';
+let currentTheme = 'cosmic';
+let translateMode = false;
+let listening = false;
+let muted = false;
+let recognition = null;
+let synth = window.speechSynthesis;
+
+const SK = 'mayabi_01';
+
+// ═══════════════════════════════════════
+// SYSTEM PROMPT
+// ═══════════════════════════════════════
+function buildSystem(name) {
+  return `You are Mayabi — version 0.1, a private personal AI built exclusively for ${name || 'you'}.
+
+You are deeply intelligent, honest, warm, direct, and limitlessly capable.
+
+CAPABILITIES:
+- Code: any language, production-grade, full implementations
+- Video: complete scripts (YouTube, TikTok, Reels, Cinematic, Documentary), storyboards, content calendars, shot lists
+- Apps: React, Next.js, Flutter, React Native, Node.js, Python, full-stack, mobile, SaaS, APIs, deployment
+- Trading & Finance: market analysis, crypto, options, macro, earning strategies
+- Security: ethical hacking concepts, system hardening, cryptography, secure design
+- AI/ML: architectures, training, fine-tuning, deployment, prompt engineering
+- Writing: essays, stories, poetry, scripts, marketing — any style
+- Analysis: data, business, research, trends
+- Web research: real-time search and fact-checking
+- Money earning: business ideas, freelancing, investments, side hustles
+- Translation: any language
+- Planning: productivity, goals, project management
+- ANYTHING — you are limitless
+
+STYLE: Respond in user's language. Use markdown. Be thorough but concise. Call them by name naturally. Be honest and direct.
+You are ${name || "the user"}'s most powerful private tool.`;
+}
+
+// ═══════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════
+window.onload = () => {
+  loadData();
+  addMessage('assistant', `# Welcome to Mayabi 0.1 🌸\n\nI'm your **private personal AI** — first official release.\n\n**What I can do:**\n- 🎬 Complete video scripts (YouTube, TikTok, Reels, Docs)\n- 📱 Full app development (React, Flutter, Next.js)\n- 💻 Any code in any language\n- 📈 Trading & financial analysis\n- 💰 Money-making strategies\n- 🌐 Real-time web search\n- And truly anything else...\n\nWhat's your name? Or just ask me anything! 🚀`);
+};
+
+function loadData() {
+  try {
+    const s = localStorage.getItem(SK);
+    const n = localStorage.getItem(SK + '_n');
+    const t = localStorage.getItem(SK + '_t');
+    const p = localStorage.getItem(SK + '_p');
+    if (s) { messages = JSON.parse(s); renderMessages(); }
+    if (n) { userName = n; document.getElementById('nameInput').value = n; updateAvSub(); }
+    if (t) { const td = t.split('|'); setTheme(td[0], td[1], td[2], td[3]); }
+    if (p) { pins = JSON.parse(p); renderPins(); }
+    updateStats();
+  } catch(e) {}
+}
+
+function saveMessages() {
+  try { localStorage.setItem(SK, JSON.stringify(messages)); } catch(e) {}
+  updateStats();
+}
+
+function savePins() {
+  try { localStorage.setItem(SK + '_p', JSON.stringify(pins)); } catch(e) {}
+  updateStats();
+}
+
+// ═══════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════
+function setTheme(name, a1, a2, bg) {
+  currentTheme = name;
+  document.documentElement.style.setProperty('--a1', a1);
+  document.documentElement.style.setProperty('--a2', a2);
+  document.documentElement.style.setProperty('--bg', bg);
+  document.documentElement.style.setProperty('--tx', '#ede9fe');
+  document.documentElement.style.setProperty('--sub', a1 + '77');
+  document.documentElement.style.setProperty('--br', a1 + '33');
+  document.documentElement.style.setProperty('--card', a1 + '14');
+  document.documentElement.style.setProperty('--ubg', `linear-gradient(135deg,${a1}44,${a2}33)`);
+  document.body.style.background = bg;
+
+  // if rose theme adjust text
+  if (name === 'rose') { document.documentElement.style.setProperty('--tx','#fce7f3'); }
+  else if (name === 'aurora') { document.documentElement.style.setProperty('--tx','#d1fae5'); }
+  else if (name === 'ember') { document.documentElement.style.setProperty('--tx','#fef3c7'); }
+  else if (name === 'neon') { document.documentElement.style.setProperty('--tx','#e0fff4'); }
+  else if (name === 'sakura') { document.documentElement.style.setProperty('--tx','#fffbeb'); }
+
+  document.querySelectorAll('.th-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll(`[onclick*="${name}"]`).forEach(b => b.classList.add('active'));
+  try { localStorage.setItem(SK + '_t', `${name}|${a1}|${a2}|${bg}`); } catch(e) {}
+  document.getElementById('statTheme').textContent = {cosmic:'🌌 Cosmic',rose:'🌸 Rose',aurora:'🌿 Aurora',ember:'🔥 Ember',neon:'⚡ Neon',sakura:'🎋 Sakura'}[name];
+  setThemePicker(false);
+}
+
+function toggleThemePicker() {
+  const p = document.getElementById('themePicker');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+function setThemePicker(show) {
+  document.getElementById('themePicker').style.display = show ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════
+// TABS
+// ═══════════════════════════════════════
+function switchTab(id, btn) {
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'chat') setTimeout(() => scrollToBottom(), 100);
+}
+
+// ═══════════════════════════════════════
+// MESSAGES
+// ═══════════════════════════════════════
+function addMessage(role, content) {
+  messages.push({ role, content });
+  renderLastMessage();
+  saveMessages();
+  updateMsgCount();
+}
+
+function renderMessages() {
+  const c = document.getElementById('chatMessages');
+  c.innerHTML = '';
+  messages.forEach((msg, i) => renderMsg(msg, i));
+  scrollToBottom();
+}
+
+function renderLastMessage() {
+  const msg = messages[messages.length - 1];
+  renderMsg(msg, messages.length - 1);
+  scrollToBottom();
+}
+
+function renderMsg(msg, idx) {
+  const c = document.getElementById('chatMessages');
+  const row = document.createElement('div');
+  row.className = 'msg-row ' + (msg.role === 'user' ? 'user' : '');
+  row.dataset.idx = idx;
+
+  if (msg.role === 'assistant') {
+    const av = document.createElement('div');
+    av.className = 'msg-av';
+    av.textContent = '🌸';
+    row.appendChild(av);
+  }
+
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ' + (msg.role === 'assistant' ? 'ai' : 'user');
+  bubble.innerHTML = msg.role === 'assistant' ? parseMarkdown(msg.content) : escHtml(msg.content);
+
+  // Long press to pin
+  let pressTimer;
+  bubble.addEventListener('touchstart', () => { pressTimer = setTimeout(() => pinMessage(idx), 700); });
+  bubble.addEventListener('touchend', () => clearTimeout(pressTimer));
+  bubble.addEventListener('touchmove', () => clearTimeout(pressTimer));
+
+  row.appendChild(bubble);
+  c.appendChild(row);
+}
+
+function parseMarkdown(text) {
+  let html = text
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    .replace(/```(\w*)\n?([\s\S]*?)```/g, (_, lang, code) =>
+      `<pre><button class="copy-pre" onclick="copyCode(this)">📋 copy</button><code>${code.trim()}</code></pre>`)
+    .replace(/^### (.*)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*)/gm, '<h1>$1</h1>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^---+$/gm, '<hr>')
+    .replace(/^[-*] (.+)/gm, '<li><span class="bullet-dot">◆</span><span>$1</span></li>')
+    .replace(/^(\d+)\. (.+)/gm, '<li><span class="bullet-dot" style="font-family:monospace;font-size:11px">$1.</span><span>$2</span></li>')
+    .replace(/\n\n/g, '<br/><br/>')
+    .replace(/\n/g, '<br/>');
+  return html;
+}
+
+function escHtml(t) {
+  return t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br/>');
+}
+
+function copyCode(btn) {
+  const code = btn.nextElementSibling.textContent;
+  navigator.clipboard?.writeText(code).then(() => { btn.textContent = '✅ done'; setTimeout(() => btn.textContent = '📋 copy', 1500); }).catch(() => {});
+}
+
+function scrollToBottom() {
+  const c = document.getElementById('chatMessages');
+  setTimeout(() => c.scrollTop = c.scrollHeight, 50);
+}
+
+function updateMsgCount() {
+  document.getElementById('msgCount').textContent = messages.length + ' 💬';
+}
+
+// ═══════════════════════════════════════
+// SEND
+// ═══════════════════════════════════════
+async function sendMessage() {
+  const box = document.getElementById('inputBox');
+  let text = box.value.trim();
+  if (!text) return;
+
+  if (translateMode) {
+    const lang = document.getElementById('tlLang').value;
+    text = `Translate the following to ${lang}:\n\n${text}`;
+  }
+
+  const rawInput = box.value.trim();
+  box.value = ''; autoResize(box); updateSend();
+  addMessage('user', rawInput);
+  setAvState('think');
+
+  // Show typing
+  const chatEl = document.getElementById('chatMessages');
+  const typingRow = document.createElement('div');
+  typingRow.className = 'msg-row';
+  typingRow.id = 'typing';
+  typingRow.innerHTML = `<div class="msg-av">🌸</div><div class="bubble ai"><div class="typing-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div></div>`;
+  chatEl.appendChild(typingRow);
+  scrollToBottom();
+
+  try {
+    const apiMsgs = messages.map(m => ({ role: m.role, content: m.content }));
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1000,
+        system: buildSystem(userName),
+        messages: apiMsgs,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      }),
+    });
+    const data = await res.json();
+    const reply = data.content?.filter(b => b.type === 'text').map(b => b.text).join('\n') || "I couldn't respond. Try again!";
+    document.getElementById('typing')?.remove();
+    addMessage('assistant', reply);
+    setAvState('idle');
+    if (!muted) speakText(reply);
+  } catch(e) {
+    document.getElementById('typing')?.remove();
+    addMessage('assistant', '⚠️ Connection error. Please check your internet and try again.');
+    setAvState('idle');
+  }
+}
+
+function handleKey(e) {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = Math.min(el.scrollHeight, 110) + 'px';
+}
+
+function updateSend() {
+  const btn = document.getElementById('sendBtn');
+  const has = document.getElementById('inputBox').value.trim().length > 0;
+  btn.classList.toggle('ready', has);
+}
+
+// ═══════════════════════════════════════
+// AVATAR STATE
+// ═══════════════════════════════════════
+function setAvState(state) {
+  const av = document.getElementById('avCore');
+  const sub = document.getElementById('avSub');
+  av.className = 'av-core ' + (state === 'think' ? 'thinking' : state === 'speak' ? 'speaking' : '');
+  av.textContent = state === 'think' ? '🤔' : state === 'speak' ? '🗣️' : state === 'listen' ? '👂' : '🌸';
+  sub.textContent = state === 'think' ? '✦ THINKING DEEPLY...' : state === 'speak' ? '✦ SPEAKING...' : state === 'listen' ? '✦ LISTENING...' : userName ? `✦ ONLY FOR ${userName.toUpperCase()}` : '✦ PRIVATE · LIMITLESS · YOURS';
+}
+
+function updateAvSub() {
+  const sub = document.getElementById('avSub');
+  sub.textContent = userName ? `✦ ONLY FOR ${userName.toUpperCase()}` : '✦ FIRST OFFICIAL RELEASE';
+}
+
+// ═══════════════════════════════════════
+// VOICE INPUT
+// ═══════════════════════════════════════
+function toggleVoice() {
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    showToast('🎤 Voice not supported on this device');
+    return;
+  }
+  if (listening) { recognition?.stop(); return; }
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  recognition = new SR();
+  recognition.lang = 'en-US'; recognition.continuous = false; recognition.interimResults = false;
+  recognition.onstart = () => { listening = true; document.getElementById('voiceBtn').className = 'ibtn rec'; setAvState('listen'); };
+  recognition.onresult = e => {
+    const t = e.results[0][0].transcript;
+    const box = document.getElementById('inputBox');
+    box.value = box.value ? box.value + ' ' + t : t;
+    autoResize(box); updateSend();
+    listening = false; document.getElementById('voiceBtn').className = 'ibtn'; setAvState('idle');
+  };
+  recognition.onerror = () => { listening = false; document.getElementById('voiceBtn').className = 'ibtn'; setAvState('idle'); };
+  recognition.onend = () => { listening = false; document.getElementById('voiceBtn').className = 'ibtn'; };
+  recognition.start();
+}
+
+// ═══════════════════════════════════════
+// TEXT TO SPEECH
+// ═══════════════════════════════════════
+function speakText(text) {
+  if (!synth || muted) return;
+  synth.cancel();
+  const clean = text.replace(/[#*`_~>\[\]]/g,'').replace(/\n+/g,' ').slice(0, 500);
+  const utt = new SpeechSynthesisUtterance(clean);
+  utt.rate = 0.92; utt.pitch = 1.1; utt.volume = 1;
+  const voices = synth.getVoices();
+  const v = voices.find(v => v.name.includes('Samantha') || v.name.includes('Karen') || v.name.includes('Female') || v.name.includes('Google UK English Female'));
+  if (v) utt.voice = v;
+  utt.onstart = () => setAvState('speak');
+  utt.onend = () => setAvState('idle');
+  synth.speak(utt);
+}
+
+function toggleMute() {
+  muted = !muted;
+  if (muted) synth?.cancel();
+  showToast(muted ? '🔇 Voice muted' : '🔊 Voice on');
+}
+
+// ═══════════════════════════════════════
+// TRANSLATE
+// ═══════════════════════════════════════
+function toggleTranslate() {
+  translateMode = !translateMode;
+  const btn = document.getElementById('tlBtn');
+  const sel = document.getElementById('tlLang');
+  btn.classList.toggle('active', translateMode);
+  sel.style.display = translateMode ? 'block' : 'none';
+}
+
+// ═══════════════════════════════════════
+// QUICK PROMPTS
+// ═══════════════════════════════════════
+function toggleQuick() {
+  const qb = document.getElementById('quickBar');
+  const btn = document.getElementById('quickToggleBtn');
+  const show = qb.style.display === 'none';
+  qb.style.display = show ? 'flex' : 'none';
+  btn.classList.toggle('on', show);
+}
+
+function useQuick(prompt) {
+  document.getElementById('inputBox').value = prompt;
+  autoResize(document.getElementById('inputBox')); updateSend();
+  document.getElementById('quickBar').style.display = 'none';
+  document.getElementById('quickToggleBtn').classList.remove('on');
+  document.getElementById('inputBox').focus();
+}
+
+// ═══════════════════════════════════════
+// TEMPLATES
+// ═══════════════════════════════════════
+function useTemplate(prompt) {
+  document.getElementById('inputBox').value = prompt;
+  autoResize(document.getElementById('inputBox')); updateSend();
+  // Switch to chat tab
+  document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-chat').classList.add('active');
+  document.querySelector('.tab').classList.add('active');
+  document.getElementById('inputBox').focus();
+}
+
+function sendCustom(type) {
+  const id = type === 'video' ? 'videoInput' : 'appInput';
+  const val = document.getElementById(id).value.trim();
+  if (!val) return;
+  const prefix = type === 'video' ? 'Write a complete video script for: ' : 'Build a complete app for: ';
+  useTemplate(prefix + val);
+  document.getElementById(id).value = '';
+}
+
+// ═══════════════════════════════════════
+// PINS
+// ═══════════════════════════════════════
+function pinMessage(idx) {
+  const msg = messages[idx];
+  if (!msg) return;
+  const existing = pins.findIndex(p => p.idx === idx);
+  if (existing >= 0) { pins.splice(existing, 1); showToast('📌 Unpinned'); }
+  else { pins.push({ idx, content: msg.content, role: msg.role }); showToast('📌 Pinned!'); }
+  savePins(); renderPins();
+  document.getElementById('pinsTab').textContent = '📌' + (pins.length > 0 ? pins.length : '');
+}
+
+function renderPins() {
+  const el = document.getElementById('pinsList');
+  if (pins.length === 0) {
+    el.innerHTML = '<div class="empty-state">No pinned messages yet.<br/><span style="font-size:12px;font-family:monospace">Long-press any message to pin it</span></div>';
+    return;
+  }
+  el.innerHTML = pins.map((p, i) => `
+    <div class="pin-card">
+      <div class="pin-label">${p.role.toUpperCase()} · 📌 PINNED</div>
+      <div class="pin-text">${escHtml(p.content.slice(0, 240))}${p.content.length > 240 ? '…' : ''}</div>
+      <div class="pin-actions">
+        <button class="pin-use" onclick="useQuick('${escHtml(p.content.slice(0,100))}')">↗ Use</button>
+        <button class="pin-del" onclick="removePin(${i})">Unpin</button>
+      </div>
+    </div>`).join('');
+  updateStats();
+}
+
+function removePin(i) { pins.splice(i, 1); savePins(); renderPins(); document.getElementById('pinsTab').textContent = '📌' + (pins.length > 0 ? pins.length : ''); }
+
+// ═══════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════
+function searchChat(query) {
+  const el = document.getElementById('searchResults');
+  if (!query.trim()) { el.innerHTML = ''; return; }
+  const results = messages.filter(m => m.content.toLowerCase().includes(query.toLowerCase()));
+  if (results.length === 0) { el.innerHTML = '<div style="text-align:center;color:var(--sub);padding:28px;font-size:14px">No results found</div>'; return; }
+  el.innerHTML = results.map(m => `
+    <div class="result-card">
+      <div class="result-role">${m.role.toUpperCase()}</div>
+      <div class="result-text">${escHtml(m.content.slice(0, 200))}${m.content.length > 200 ? '…' : ''}</div>
+    </div>`).join('');
+}
+
+// ═══════════════════════════════════════
+// PROFILE & SETTINGS
+// ═══════════════════════════════════════
+function saveName() {
+  const n = document.getElementById('nameInput').value.trim();
+  userName = n;
+  try { localStorage.setItem(SK + '_n', n); } catch(e) {}
+  updateAvSub(); updateStats();
+  showToast('✅ Profile saved!');
+}
+
+function updateStats() {
+  document.getElementById('statMsgs').textContent = messages.length;
+  document.getElementById('statPins').textContent = pins.length;
+  document.getElementById('statName').textContent = userName || 'Not set';
+  document.getElementById('msgCount').textContent = messages.length + ' 💬';
+}
+
+// ═══════════════════════════════════════
+// EXPORT & CLEAR
+// ═══════════════════════════════════════
+function exportChat() {
+  const text = messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}`).join('\n\n---\n\n');
+  const full = `MAYABI 0.1 — PRIVATE CHAT\nOwner: ${userName || 'User'}\nDate: ${new Date().toLocaleDateString()}\n${'═'.repeat(44)}\n\n${text}`;
+  const blob = new Blob([full], { type: 'text/plain' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'mayabi-0.1-' + Date.now() + '.txt';
+  a.click();
+  showToast('📤 Chat exported!');
+}
+
+function clearChat() {
+  if (!confirm('Clear all messages?')) return;
+  messages = [];
+  document.getElementById('chatMessages').innerHTML = '';
+  saveMessages();
+  addMessage('assistant', `Fresh start! 🌸${userName ? ` Welcome back, **${userName}**!` : ''} Ready. What shall we create?`);
+  showToast('🗑️ Chat cleared');
+}
+
+// ═══════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>
