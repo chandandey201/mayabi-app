@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Java 17
@@ -25,25 +25,10 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK components
+      - name: Accept licenses and install SDK
         run: |
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
-
-      - name: Fix project structure
-        run: |
-          if [ -d "MayabiApp/app" ] && [ ! -d "app/src" ]; then
-            cp -r MayabiApp/app ./app
-          fi
-          if [ -f "MayabiApp/settings.gradle" ] && [ ! -f "settings.gradle" ]; then
-            cp MayabiApp/settings.gradle .
-          fi
-          if [ -f "MayabiApp/build.gradle" ] && [ ! -f "build.gradle" ]; then
-            cp MayabiApp/build.gradle .
-          fi
-          if [ -f "MayabiApp/gradle.properties" ] && [ ! -f "gradle.properties" ]; then
-            cp MayabiApp/gradle.properties .
-          fi
 
       - name: Setup Gradle wrapper
         run: |
@@ -52,41 +37,39 @@ jobs:
           curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
           printf '#!/bin/sh\nAPP_HOME="$(cd "$(dirname "$0")" && pwd)"\nCLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar\nexec java "-Dorg.gradle.appname=gradlew" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"\n' > gradlew
           chmod +x gradlew
+          echo "JAR size: $(wc -c < gradle/wrapper/gradle-wrapper.jar)"
 
-      - name: Show project before build
+      - name: Fix project - move app folder to root
         run: |
-          echo "=== ROOT ==="
-          ls -la
-          echo "=== app/ ==="
-          ls -la app/ || echo "NO APP FOLDER"
-          echo "=== app/src/main/ ==="
-          ls -la app/src/main/ || echo "NO MAIN FOLDER"
-          echo "=== AndroidManifest ==="
-          cat app/src/main/AndroidManifest.xml || echo "NO MANIFEST"
-          echo "=== app/build.gradle ==="
-          cat app/build.gradle || echo "NO APP BUILD.GRADLE"
-          echo "=== settings.gradle ==="
-          cat settings.gradle || echo "NO SETTINGS"
-          echo "=== build.gradle ==="
-          cat build.gradle || echo "NO ROOT BUILD.GRADLE"
+          if [ ! -f "app/build.gradle" ] && [ -f "MayabiApp/app/build.gradle" ]; then
+            echo "Moving app from MayabiApp/ to root"
+            cp -r MayabiApp/app .
+          fi
+          if [ ! -f "settings.gradle" ] && [ -f "MayabiApp/settings.gradle" ]; then
+            cp MayabiApp/settings.gradle .
+          fi
+          if [ ! -f "build.gradle" ] && [ -f "MayabiApp/build.gradle" ]; then
+            cp MayabiApp/build.gradle .
+          fi
+          if [ ! -f "gradle.properties" ] && [ -f "MayabiApp/gradle.properties" ]; then
+            cp MayabiApp/gradle.properties .
+          fi
 
-      - name: Build APK - FULL OUTPUT
+      - name: Verify structure
         run: |
-          ./gradlew assembleDebug --no-daemon --stacktrace --info 2>&1
+          echo "ROOT:" && ls -la
+          echo "APP:" && ls app/ || echo "NO APP FOLDER - BUILD WILL FAIL"
+          echo "SETTINGS:" && cat settings.gradle
+          echo "APP BUILD.GRADLE:" && cat app/build.gradle
+
+      - name: Build APK
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
-        continue-on-error: true
 
-      - name: Check APK output
-        run: |
-          echo "=== Searching for APK ==="
-          find . -name "*.apk" 2>/dev/null || echo "NO APK FOUND"
-          echo "=== Build output folder ==="
-          ls -la app/build/outputs/ 2>/dev/null || echo "NO OUTPUTS FOLDER"
-
-      - name: Upload APK if exists
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: Mayabi-0.1-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: warn
+          if-no-files-found: error
