@@ -30,18 +30,15 @@ jobs:
           yes | sdkmanager --licenses || true
           sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Create app icon files
+      - name: Create app icons
         run: |
-          ICON="iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAACF0lEQVR4nO3TIQEAIBDAwO9PEDpiIAZiJ87PbPY6F6rmdwD8ZADSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApD22eEq505n4AQAAAABJRU5ErkJggg=="
-
+          ICON="iVBORw0KGgoAAAANSUhEUgAAAMAAAADACAIAAADdvvtQAAACF0lEQVR4nO3TIQEAIBDAwO9PEDpiIAZiJ87PbPY6F6rmdwD8ZADSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApBmANAOQZgDSDECaAUgzAGkGIM0ApD22eEq505n4AQAAAABJRU5ErkJggg=="
           for DIR in mipmap-mdpi mipmap-hdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
             mkdir -p app/src/main/res/$DIR
             echo "$ICON" | base64 -d > app/src/main/res/$DIR/ic_launcher.png
             echo "$ICON" | base64 -d > app/src/main/res/$DIR/ic_launcher_round.png
           done
-
-          echo "Icons created:"
-          find app/src/main/res -name "*.png" | sort
+          echo "Icons created"
 
       - name: Fix AndroidManifest
         run: |
@@ -79,9 +76,8 @@ jobs:
           </manifest>
           EOF
           sed -i 's/^          //' app/src/main/AndroidManifest.xml
-          echo "Manifest fixed"
 
-      - name: Fix build.gradle files
+      - name: Fix all Gradle files
         run: |
           cat > build.gradle << 'EOF'
           plugins {
@@ -126,6 +122,9 @@ jobs:
                   versionName "0.1"
               }
               buildTypes {
+                  debug {
+                      debuggable true
+                  }
                   release {
                       minifyEnabled false
                       proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
@@ -135,6 +134,9 @@ jobs:
                   sourceCompatibility JavaVersion.VERSION_1_8
                   targetCompatibility JavaVersion.VERSION_1_8
               }
+              buildFeatures {
+                  buildConfig true
+              }
           }
           dependencies {
               implementation 'androidx.appcompat:appcompat:1.6.1'
@@ -142,7 +144,6 @@ jobs:
               implementation 'androidx.webkit:webkit:1.8.0'
           }
           EOF
-
           echo "All gradle files fixed"
 
       - name: Setup Gradle wrapper
@@ -152,7 +153,7 @@ jobs:
           curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
           printf '#!/bin/sh\nAPP_HOME="$(cd "$(dirname "$0")" && pwd)"\nCLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar\nexec java "-Dorg.gradle.appname=gradlew" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"\n' > gradlew
           chmod +x gradlew
-          echo "Jar: $(wc -c < gradle/wrapper/gradle-wrapper.jar) bytes"
+          echo "Gradle wrapper ready"
 
       - name: Build APK
         run: ./gradlew assembleDebug --no-daemon --stacktrace
