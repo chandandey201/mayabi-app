@@ -26,34 +26,48 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install SDK components
-        run: yes | sdkmanager --licenses || true && sdkmanager "platforms;android-34" "build-tools;34.0.0"
+        run: |
+          yes | sdkmanager --licenses || true
+          sdkmanager "platforms;android-34" "build-tools;34.0.0"
 
-      - name: Download Gradle wrapper jar
+      - name: Create all Gradle wrapper files
         run: |
           mkdir -p gradle/wrapper
-          curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
-          echo "Jar size $(wc -c < gradle/wrapper/gradle-wrapper.jar) bytes"
 
-      - name: Create gradlew script
-        run: |
+          echo "distributionBase=GRADLE_USER_HOME" > gradle/wrapper/gradle-wrapper.properties
+          echo "distributionPath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+          echo "distributionUrl=https\://services.gradle.org/distributions/gradle-8.2-bin.zip" >> gradle/wrapper/gradle-wrapper.properties
+          echo "zipStoreBase=GRADLE_USER_HOME" >> gradle/wrapper/gradle-wrapper.properties
+          echo "zipStorePath=wrapper/dists" >> gradle/wrapper/gradle-wrapper.properties
+
+          curl -sL "https://github.com/gradle/gradle/raw/v8.2.0/gradle/wrapper/gradle-wrapper.jar" -o gradle/wrapper/gradle-wrapper.jar
+          echo "Jar size: $(wc -c < gradle/wrapper/gradle-wrapper.jar) bytes"
+
           printf '#!/bin/sh\nAPP_HOME=$(cd "$(dirname "$0")" && pwd)\nCLASSPATH=$APP_HOME/gradle/wrapper/gradle-wrapper.jar\nexec java "-Dorg.gradle.appname=gradlew" -classpath "$CLASSPATH" org.gradle.wrapper.GradleWrapperMain "$@"\n' > gradlew
           chmod +x gradlew
-          echo "gradlew created OK"
+
+          echo "=== Wrapper files ready ==="
+          ls -lh gradle/wrapper/
           ls -la gradlew
 
-      - name: Show project structure
+      - name: Verify full project structure
         run: |
-          echo "Root files:"
+          echo "=== Root ==="
           ls -la
-          echo "settings.gradle content:"
-          cat settings.gradle
-          echo "app folder:"
+          echo "=== app/ ==="
           ls app/
+          echo "=== gradle/wrapper/ ==="
+          ls -lh gradle/wrapper/
+          echo "=== settings.gradle ==="
+          cat settings.gradle
 
       - name: Build debug APK
         run: ./gradlew assembleDebug --no-daemon
         env:
           ANDROID_HOME: /usr/local/lib/android/sdk
+
+      - name: Find APK
+        run: find . -name "*.apk" 2>/dev/null
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
